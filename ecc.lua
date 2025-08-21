@@ -44,10 +44,7 @@
 
 	function m.writeArgs(args, obj, src)
 		for _,arg in ipairs(args) do
-			-- Defines like the following will break JSON format, quotes need to be escaped
-			-- -DEXPORT_API=__attribute__((visibility("default")))
-			local escaped = arg:gsub("\"", "\\\"")
-			p.w("\"%s\",", escaped)
+			p.w("\"%s\",", arg)
 		end
 		p.w("\"-c\",")
 		p.w("\"-o\",")
@@ -72,10 +69,17 @@
 		local tool = iif(project.iscpp(prj), "cxx", "cc")
 		local toolname = iif(cfg.prefix, toolset.gettoolname(cfg, tool), toolset.tools[tool])
 		args = table.join(args, toolname)
-		args = table.join(args, toolset.getcppflags(cfg)) -- Preprocessor
+		args = table.join(args, toolset.getcppflags(cfg))
 		args = table.join(args, toolset.getdefines(cfg.defines))
 		args = table.join(args, toolset.getundefines(cfg.undefines))
 		args = table.join(args, toolset.getincludedirs(cfg, cfg.includedirs, cfg.sysincludedirs))
+		
+		-- Add PCH include for non-MSVC toolsets
+		if cfg.pchheader and toolset ~= p.tools.msc then
+			local pchpath = path.getabsolute(cfg.pchheader, prj.location)
+			args = table.join(args, {"-include", pchpath})
+		end
+		
 		if project.iscpp(prj) then
 			args = table.join(args, toolset.getcxxflags(cfg))
 		else
